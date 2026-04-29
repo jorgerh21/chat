@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT · Clases Personalizadas</title>
+    <link rel="stylesheet" href="css/chat.css">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Barra lateral (opcional, para sesiones) -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>💬 Clases IA</h2>
+            </div>
+            <button class="nuevo-chat">+ Nuevo chat</button>
+            <div class="historial">
+                <!-- Aquí podrías listar conversaciones guardadas -->
+            </div>
+            <div class="sidebar-footer">
+                <p>Instructor: Jorge Rodriguez</p>
+            </div>
+        </aside>
+
+        <!-- Área principal del chat -->
+        <main class="chat-main">
+            <header class="chat-header">
+                <h1>Asistente de Programación</h1>
+                <p>Potenciado por OpenAI</p>
+            </header>
+
+            <!-- Mensajes -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="mensaje asistente">
+                    <div class="avatar">🤖</div>
+                    <div class="contenido">
+                        <p>¡Hola! Soy tu asistente de programación. Puedo ayudarte con:</p>
+                        <ul>
+                            <li>Explicarte conceptos de código</li>
+                            <li>Resolver dudas de tus cursos</li>
+                            <li>Generar ejemplos prácticos</li>
+                            <li>Depurar fragmentos de código</li>
+                        </ul>
+                        <p>¿En qué te puedo ayudar hoy?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Área de entrada -->
+            <div class="chat-input">
+                <textarea 
+                    id="userInput" 
+                    placeholder="Escribe tu mensaje aquí..." 
+                    rows="1"
+                    autofocus
+                ></textarea>
+                <button id="sendBtn" class="btn-enviar">
+                    <span class="icono">▶</span>
+                </button>
+            </div>
+
+            <!-- Indicador de API Key -->
+            <div class="api-config">
+                <input 
+                    type="password" 
+                    id="apiKey" 
+                    placeholder="Pega tu API Key de OpenAI aquí"
+                />
+                <small>Tu clave se guarda solo en este navegador</small>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/chat.js"></script>
+</body>
+</html>
