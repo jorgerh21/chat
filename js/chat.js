@@ -1,28 +1,47 @@
 // =============================================
-// CONFIGURACIÓN DE TU API
+// CONFIGURACIÓN DE LA API
 // =============================================
-const API_URL = 'https://chatbot.discoduro.app/api/chat';  // Tu API Flask
-const HEALTH_URL = 'https://chatbot.discoduro.app/health';  // Endpoint de salud
+const API_URL = 'https://chatbot.discoduro.app/api/chat';
+const HEALTH_URL = 'https://chatbot.discoduro.app/health';
 
 const chatMessages = document.getElementById('chatMessages');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 
-// ID del cliente (se genera aleatoriamente y se mantiene en la sesión)
-let clienteId = localStorage.getItem('chatbot_cliente_id');
-if (!clienteId) {
-    clienteId = 'web_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('chatbot_cliente_id', clienteId);
+// =============================================
+// GESTIÓN DEL HISTORIAL (en el frontend)
+// =============================================
+const SYSTEM_PROMPT = `Eres un asistente amigable y experto en programación. 
+Ayudas a estudiantes de los siguientes cursos:
+- Crea tu propia página web (HTML, Antigravity, Gemini/ChatGPT) · 10h · $100.000 COP
+- Lógica de Programación con Python · 20h · $150.000 COP
+- Desarrollo Web Full Stack (MySQL, Backend Python, Frontend React) · 30h · $300.000 COP
+- Inteligencia Artificial (Python para Datos, Machine Learning) · 32h · $600.000 COP
+
+Responde en español, con ejemplos de código cuando sea útil.`;
+
+let conversationHistory = [
+    { role: "system", content: SYSTEM_PROMPT }
+];
+
+// Cargar historial guardado
+const savedHistory = localStorage.getItem('chat_history');
+if (savedHistory) {
+    try {
+        conversationHistory = JSON.parse(savedHistory);
+    } catch (e) {
+        console.warn('No se pudo cargar el historial guardado');
+    }
 }
 
-// Nombre del usuario (puedes personalizarlo)
-const nombreUsuario = 'Estudiante Web';
+// Guardar historial
+function saveHistory() {
+    localStorage.setItem('chat_history', JSON.stringify(conversationHistory));
+}
 
 // =============================================
-// FUNCIONES
+// FUNCIONES DE UI
 // =============================================
-
-// Agregar mensaje al chat
 function addMessage(role, text) {
     const div = document.createElement('div');
     div.className = `mensaje ${role}`;
@@ -47,20 +66,14 @@ function addMessage(role, text) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Formatear texto (Markdown simple)
 function formatMessage(text) {
-    // Código en bloque (```...```)
     text = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-    // Código en línea (`...`)
     text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Negrita
     text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Saltos de línea
     text = text.replace(/\n/g, '<br>');
     return text;
 }
 
-// Indicador de "escribiendo..."
 function showTyping() {
     const div = document.createElement('div');
     div.className = 'mensaje asistente';
@@ -78,9 +91,9 @@ function showTyping() {
 }
 
 // =============================================
-// LLAMADA A TU API
+// LLAMADA A LA API (envía todo el historial)
 // =============================================
-async function callAPI(userMessage) {
+async function callAPI() {
     const typingDiv = showTyping();
 
     try {
@@ -90,9 +103,7 @@ async function callAPI(userMessage) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                message: userMessage,
-                cliente_id: clienteId,
-                nombre: nombreUsuario
+                messages: conversationHistory
             })
         });
 
@@ -101,8 +112,6 @@ async function callAPI(userMessage) {
         }
 
         const data = await response.json();
-
-        // Eliminar indicador de carga
         typingDiv.remove();
 
         if (data.error) {
@@ -110,75 +119,48 @@ async function callAPI(userMessage) {
             return;
         }
 
-        addMessage('asistente', data.response);
-
-        // Actualizar cliente_id si la API devolvió uno nuevo
-        if (data.cliente_id && data.cliente_id !== clienteId) {
-            clienteId = data.cliente_id;
-            localStorage.setItem('chatbot_cliente_id', clienteId);
-        }
+        // Agregar respuesta al historial y mostrarla
+        const botMessage = data.response;
+        conversationHistory.push({ role: "assistant", content: botMessage });
+        saveHistory();
+        
+        addMessage('asistente', botMessage);
 
     } catch (error) {
         typingDiv.remove();
-        addMessage('asistente', `❌ **Error de conexión:** No se pudo contactar con el asistente. 
-        Verifica que la API esté funcionando en \`${API_URL}\``);
+        addMessage('asistente', `❌ **Error de conexión:** ${error.message}`);
         console.error(error);
     }
 }
 
-// Enviar mensaje
+// =============================================
+// ENVIAR MENSAJE
+// =============================================
 function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
 
+    // Agregar al historial
+    conversationHistory.push({ role: "user", content: text });
+    saveHistory();
+
+    // Mostrar en la UI
     addMessage('usuario', text);
     userInput.value = '';
     userInput.style.height = 'auto';
 
-    callAPI(text);
+    // Llamar a la API
+    callAPI();
 }
 
 // =============================================
-// VERIFICAR SALUD DE LA API
+// NUEVO CHAT
 // =============================================
-async function checkHealth() {
-    try {
-        const response = await fetch(HEALTH_URL);
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ API conectada:', data);
-            return true;
-        }
-    } catch (error) {
-        console.warn('⚠️ No se pudo verificar la API:', error);
-    }
-    return false;
-}
-
-// =============================================
-// EVENTOS
-// =============================================
-
-sendBtn.addEventListener('click', sendMessage);
-
-userInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
-
-// Auto-ajustar altura del textarea
-userInput.addEventListener('input', () => {
-    userInput.style.height = 'auto';
-    userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
-});
-
-// Nuevo chat
-document.querySelector('.nuevo-chat').addEventListener('click', () => {
-    // Generar nuevo ID de cliente para empezar historial limpio
-    clienteId = 'web_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('chatbot_cliente_id', clienteId);
+function newChat() {
+    conversationHistory = [
+        { role: "system", content: SYSTEM_PROMPT }
+    ];
+    saveHistory();
 
     chatMessages.innerHTML = `
         <div class="mensaje asistente">
@@ -195,18 +177,30 @@ document.querySelector('.nuevo-chat').addEventListener('click', () => {
             </div>
         </div>
     `;
+}
+
+// =============================================
+// EVENTOS
+// =============================================
+sendBtn.addEventListener('click', sendMessage);
+
+userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
 });
+
+userInput.addEventListener('input', () => {
+    userInput.style.height = 'auto';
+    userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+});
+
+document.querySelector('.nuevo-chat').addEventListener('click', newChat);
 
 // =============================================
 // INICIALIZACIÓN
 // =============================================
 console.log('🚀 Chat iniciado');
 console.log('📡 API:', API_URL);
-console.log('👤 Cliente ID:', clienteId);
-
-// Verificar salud de la API al cargar
-checkHealth().then(ok => {
-    if (!ok) {
-        addMessage('asistente', '⚠️ **Nota:** El asistente está iniciando. Si no responde en unos segundos, verifica que la API esté funcionando.');
-    }
-});
+console.log('💾 Historial guardado:', conversationHistory.length, 'mensajes');
