@@ -371,3 +371,34 @@ body {
         padding: 0.8rem;
     }
 }
+
+/* ===== INDICADOR DE ESTADO ===== */
+.api-config {
+    padding: 0.5rem 1.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffeb3b; /* amarillo por defecto (conectando) */
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.status-dot.connected {
+    background: #25D366; /* verde cuando está conectado */
+}
+
+.status-dot.disconnected {
+    background: #ff4444; /* rojo cuando hay error */
+}
+
+.api-config small {
+    color: #888;
+    font-size: 0.75rem;
+}

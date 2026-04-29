@@ -7,6 +7,23 @@ const HEALTH_URL = 'https://chatbot.discoduro.app/health';
 const chatMessages = document.getElementById('chatMessages');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
+const statusIndicator = document.getElementById('statusIndicator');
+const statusText = document.getElementById('statusText');
+
+// =============================================
+// INDICADOR DE ESTADO
+// =============================================
+function updateStatus(connected) {
+    if (!statusIndicator || !statusText) return;
+
+    if (connected) {
+        statusIndicator.className = 'status-dot connected';
+        statusText.textContent = 'Conectado · Ollama Llama 3';
+    } else {
+        statusIndicator.className = 'status-dot disconnected';
+        statusText.textContent = 'Desconectado · Verifica la API';
+    }
+}
 
 // =============================================
 // GESTIÓN DEL HISTORIAL (en el frontend)
@@ -28,20 +45,32 @@ let conversationHistory = [
 const savedHistory = localStorage.getItem('chat_history');
 if (savedHistory) {
     try {
-        conversationHistory = JSON.parse(savedHistory);
+        const parsed = JSON.parse(savedHistory);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            conversationHistory = parsed;
+            console.log('💾 Historial cargado:', conversationHistory.length, 'mensajes');
+        }
     } catch (e) {
-        console.warn('No se pudo cargar el historial guardado');
+        console.warn('⚠️ No se pudo cargar el historial guardado, iniciando nuevo');
     }
 }
 
 // Guardar historial
 function saveHistory() {
-    localStorage.setItem('chat_history', JSON.stringify(conversationHistory));
+    try {
+        // Mantener solo los últimos 50 mensajes para no llenar localStorage
+        const toSave = conversationHistory.slice(-50);
+        localStorage.setItem('chat_history', JSON.stringify(toSave));
+    } catch (e) {
+        console.warn('⚠️ No se pudo guardar el historial:', e);
+    }
 }
 
 // =============================================
 // FUNCIONES DE UI
 // =============================================
+
+// Agregar mensaje al chat
 function addMessage(role, text) {
     const div = document.createElement('div');
     div.className = `mensaje ${role}`;
@@ -63,20 +92,51 @@ function addMessage(role, text) {
     }
 
     chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    scrollToBottom();
 }
 
+// Formatear texto (Markdown simple)
 function formatMessage(text) {
-    text = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/\n/g, '<br>');
-    return text;
+    if (!text) return '';
+
+    // Escapar HTML primero para evitar XSS
+    let formatted = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Código en bloque (```...```)
+    formatted = formatted.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+
+    // Código en línea (`...`)
+    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Negrita (**...**)
+    formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Cursiva (*...*)
+    formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Enlaces [texto](url)
+    formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Saltos de línea
+    formatted = formatted.replace(/\n/g, '<br>');
+
+    return formatted;
 }
 
+// Scroll automático al final
+function scrollToBottom() {
+    setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 50);
+}
+
+// Indicador de "escribiendo..."
 function showTyping() {
     const div = document.createElement('div');
-    div.className = 'mensaje asistente';
+    div.className = 'mensaje asistente typing';
     div.innerHTML = `
         <div class="avatar">🤖</div>
         <div class="contenido">
@@ -86,50 +146,80 @@ function showTyping() {
         </div>
     `;
     chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    scrollToBottom();
     return div;
+}
+
+// Eliminar indicador de typing
+function removeTyping(typingDiv) {
+    if (typingDiv && typingDiv.parentNode) {
+        typingDiv.remove();
+    }
 }
 
 // =============================================
 // LLAMADA A LA API (envía todo el historial)
 // =============================================
 async function callAPI() {
-    const typingDiv = showTyping();
+    let typingDiv = null;
 
     try {
+        // Mostrar indicador de escritura
+        typingDiv = showTyping();
+
+        // Limitar historial a últimos 20 mensajes para no sobrecargar
+        const messagesToSend = conversationHistory.slice(-20);
+
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                messages: conversationHistory
+                messages: messagesToSend
             })
         });
 
+        // Eliminar indicador
+        removeTyping(typingDiv);
+
         if (!response.ok) {
-            throw new Error(`Error ${response.status}: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`Error ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
-        typingDiv.remove();
 
         if (data.error) {
-            addMessage('asistente', `❌ **Error:** ${data.error}`);
+            addMessage('asistente', `❌ **Error del servidor:** ${data.error}`);
             return;
         }
 
-        // Agregar respuesta al historial y mostrarla
-        const botMessage = data.response;
+        const botMessage = data.response || 'No se recibió respuesta';
+
+        // Agregar respuesta al historial
         conversationHistory.push({ role: "assistant", content: botMessage });
         saveHistory();
-        
+
+        // Mostrar respuesta
         addMessage('asistente', botMessage);
 
     } catch (error) {
-        typingDiv.remove();
-        addMessage('asistente', `❌ **Error de conexión:** ${error.message}`);
-        console.error(error);
+        removeTyping(typingDiv);
+
+        let errorMsg = '❌ **Error de conexión**';
+
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            errorMsg += '\nNo se pudo conectar con el servidor. Verifica tu conexión a internet.';
+            updateStatus(false);
+        } else if (error.message.includes('timeout')) {
+            errorMsg += '\nLa solicitud tardó demasiado. Intenta de nuevo.';
+        } else {
+            errorMsg += `\n${error.message}`;
+        }
+
+        addMessage('asistente', errorMsg);
+        console.error('❌ Error:', error);
     }
 }
 
@@ -140,28 +230,53 @@ function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
 
-    // Agregar al historial
+    // Verificar que no esté vacío después de trim
+    if (text.length === 0) return;
+
+    // Deshabilitar botón mientras se procesa
+    sendBtn.disabled = true;
+    userInput.disabled = true;
+
+    // Agregar mensaje del usuario al historial
     conversationHistory.push({ role: "user", content: text });
     saveHistory();
 
     // Mostrar en la UI
     addMessage('usuario', text);
+
+    // Limpiar input
     userInput.value = '';
     userInput.style.height = 'auto';
 
+    // Hacer foco en el input
+    userInput.focus();
+
     // Llamar a la API
-    callAPI();
+    callAPI().finally(() => {
+        // Re-habilitar botón después de recibir respuesta
+        sendBtn.disabled = false;
+        userInput.disabled = false;
+        userInput.focus();
+    });
 }
 
 // =============================================
 // NUEVO CHAT
 // =============================================
 function newChat() {
+    // Confirmar si hay conversación activa
+    if (conversationHistory.length > 1) {
+        const confirmar = confirm('¿Estás seguro de iniciar un nuevo chat? Se perderá el historial actual.');
+        if (!confirmar) return;
+    }
+
+    // Reiniciar historial
     conversationHistory = [
         { role: "system", content: SYSTEM_PROMPT }
     ];
     saveHistory();
 
+    // Limpiar mensajes y mostrar bienvenida
     chatMessages.innerHTML = `
         <div class="mensaje asistente">
             <div class="avatar">🤖</div>
@@ -171,19 +286,62 @@ function newChat() {
                     <li>Explicarte conceptos de código</li>
                     <li>Resolver dudas de tus cursos</li>
                     <li>Generar ejemplos prácticos</li>
-                    <li>Información sobre precios y horarios</li>
+                    <li>Depurar fragmentos de código</li>
                 </ul>
                 <p>¿En qué te puedo ayudar hoy?</p>
             </div>
         </div>
     `;
+
+    // Hacer foco en el input
+    userInput.focus();
+
+    console.log('🔄 Nuevo chat iniciado');
+}
+
+// =============================================
+// VERIFICAR SALUD DE LA API
+// =============================================
+async function checkHealth() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(HEALTH_URL, {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ API conectada:', data);
+            updateStatus(true);
+
+            // Actualizar texto con el modelo real si viene en la respuesta
+            if (data.model) {
+                statusText.textContent = `Conectado · ${data.model}`;
+            }
+        } else {
+            updateStatus(false);
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudo verificar la API:', error.message);
+        updateStatus(false);
+    }
 }
 
 // =============================================
 // EVENTOS
 // =============================================
-sendBtn.addEventListener('click', sendMessage);
 
+// Botón enviar
+sendBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    sendMessage();
+});
+
+// Enter para enviar, Shift+Enter para nueva línea
 userInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -191,16 +349,41 @@ userInput.addEventListener('keydown', (e) => {
     }
 });
 
+// Auto-ajustar altura del textarea
 userInput.addEventListener('input', () => {
     userInput.style.height = 'auto';
     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
 });
 
-document.querySelector('.nuevo-chat').addEventListener('click', newChat);
+// Botón nuevo chat
+const nuevoChatBtn = document.querySelector('.nuevo-chat');
+if (nuevoChatBtn) {
+    nuevoChatBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        newChat();
+    });
+}
+
+// Atajo de teclado: Ctrl+K para nuevo chat
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        newChat();
+    }
+});
 
 // =============================================
 // INICIALIZACIÓN
 // =============================================
-console.log('🚀 Chat iniciado');
+console.log('🚀 Asistente de Programación iniciado');
 console.log('📡 API:', API_URL);
-console.log('💾 Historial guardado:', conversationHistory.length, 'mensajes');
+console.log('💾 Historial:', conversationHistory.length, 'mensajes');
+
+// Verificar conexión al cargar
+checkHealth();
+
+// Verificar periódicamente (cada 60 segundos)
+setInterval(checkHealth, 60000);
+
+// Enfocar el input al cargar
+userInput.focus();

@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatGPT · Clases Personalizadas</title>
+    <title>Asistente de Programación · Clases Personalizadas</title>
     <link rel="stylesheet" href="css/chat.css">
 </head>
 <body>
     <div class="chat-container">
-        <!-- Barra lateral (opcional, para sesiones) -->
+        <!-- Barra lateral -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h2>💬 Clases IA</h2>
@@ -26,7 +26,7 @@
         <main class="chat-main">
             <header class="chat-header">
                 <h1>Asistente de Programación</h1>
-                <p>Potenciado por OpenAI</p>
+                <p>Potenciado por Ollama · Modelo Llama 3</p>
             </header>
 
             <!-- Mensajes -->
@@ -54,19 +54,15 @@
                     rows="1"
                     autofocus
                 ></textarea>
-                <button id="sendBtn" class="btn-enviar">
+                <button id="sendBtn" class="btn-enviar" title="Enviar mensaje">
                     <span class="icono">▶</span>
                 </button>
             </div>
 
-            <!-- Indicador de API Key -->
+            <!-- Estado de la conexión -->
             <div class="api-config">
-                <input 
-                    type="password" 
-                    id="apiKey" 
-                    placeholder="Pega tu API Key de OpenAI aquí"
-                />
-                <small>Tu clave se guarda solo en este navegador</small>
+                <span id="statusIndicator" class="status-dot"></span>
+                <small id="statusText">Conectando...</small>
             </div>
         </main>
     </div>
