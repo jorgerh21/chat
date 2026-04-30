@@ -1,9 +1,9 @@
 // chat-widget.js - Botón flotante + ventana de chat conectada a API Gemini (asistente de ventas)
 // con auto-apertura la primera vez, botones de reinicio y enlace a chat completo.
 
-(function() {
+(function () {
   // Configuración
-  const API_URL = 'https://chatbot.discoduro.app/chat';
+  const API_URL = 'https://api.sitioz.com/web.php';
   const STORAGE_KEY = 'chat_widget_conversation';
   const AUTO_OPEN_KEY = 'chat_widget_auto_opened';
   const WELCOME_MESSAGE = '🤖 ¡Hola! Soy tu asesor de ventas de cursos de programación. ¿En qué puedo ayudarte hoy?';
@@ -248,7 +248,7 @@
       try {
         conversation = JSON.parse(saved);
         if (!Array.isArray(conversation)) conversation = [];
-      } catch(e) { conversation = []; }
+      } catch (e) { conversation = []; }
     }
   }
 
@@ -316,21 +316,21 @@
   async function sendMessageToAPI() {
     const text = inputField.value.trim();
     if (!text) return;
-    
+
     // Deshabilitar UI
     sendButton.disabled = true;
     inputField.disabled = true;
     if (statusDiv) statusDiv.innerText = 'Enviando...';
-    
+
     // Agregar mensaje de usuario
     addMessage('user', text);
     renderMessages();
     inputField.value = '';
     inputField.style.height = 'auto';
-    
+
     // Mostrar typing
     showTyping();
-    
+
     try {
       const payload = { messages: conversation };
       const response = await fetch(API_URL, {
@@ -338,11 +338,11 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
+
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const reply = data.respuesta || 'Lo siento, no pude generar una respuesta.';
-      
+
       hideTyping();
       addMessage('assistant', reply);
       renderMessages();
@@ -353,7 +353,7 @@
       addMessage('assistant', '⚠️ Error de conexión. Intenta de nuevo más tarde.');
       renderMessages();
       if (statusDiv) statusDiv.innerText = 'Error de red';
-      setTimeout(() => { if(statusDiv) statusDiv.innerText = ''; }, 3000);
+      setTimeout(() => { if (statusDiv) statusDiv.innerText = ''; }, 3000);
     } finally {
       sendButton.disabled = false;
       inputField.disabled = false;
@@ -363,12 +363,12 @@
 
   // Helper: escapar HTML
   function escapeHtml(str) {
-    return str.replace(/[&<>]/g, function(m) {
+    return str.replace(/[&<>]/g, function (m) {
       if (m === '&') return '&amp;';
       if (m === '<') return '&lt;';
       if (m === '>') return '&gt;';
       return m;
-    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function (c) {
       return c;
     });
   }
@@ -376,21 +376,21 @@
   // Crear la ventana del widget (sin mostrarla aún, solo estructura)
   function createWidget() {
     if (widgetContainer) return;
-    
+
     widgetContainer = document.createElement('div');
     widgetContainer.className = 'chat-widget-container';
     // No se fija display aquí; se controlará desde init()
-    
+
     // Header con botones adicionales
     const header = document.createElement('div');
     header.className = 'chat-widget-header';
-    
+
     const title = document.createElement('h3');
     title.textContent = '🎓 Asistente de Cursos';
-    
+
     const btnContainer = document.createElement('div');
     btnContainer.className = 'header-buttons';
-    
+
     // Botón reiniciar
     const resetBtn = document.createElement('button');
     resetBtn.className = 'header-btn';
@@ -400,7 +400,7 @@
       e.stopPropagation();
       resetConversation();
     });
-    
+
     // Botón enlace a chat.sitioz.com
     const linkBtn = document.createElement('button');
     linkBtn.className = 'header-btn';
@@ -410,7 +410,7 @@
       e.stopPropagation();
       window.open(SITE_URL, '_blank');
     });
-    
+
     // Botón cerrar (X)
     const closeBtn = document.createElement('button');
     closeBtn.className = 'chat-widget-close';
@@ -424,17 +424,17 @@
         localStorage.setItem(AUTO_OPEN_KEY, 'closed_manually');
       }
     });
-    
+
     btnContainer.appendChild(resetBtn);
     btnContainer.appendChild(linkBtn);
     header.appendChild(title);
     header.appendChild(btnContainer);
     header.appendChild(closeBtn);
-    
+
     // Messages area
     messagesDiv = document.createElement('div');
     messagesDiv.className = 'chat-widget-messages';
-    
+
     // Input area
     const inputArea = document.createElement('div');
     inputArea.className = 'chat-widget-input-area';
@@ -448,7 +448,7 @@
         sendMessageToAPI();
       }
     });
-    inputField.addEventListener('input', function() {
+    inputField.addEventListener('input', function () {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 80) + 'px';
     });
@@ -458,23 +458,23 @@
     sendButton.addEventListener('click', sendMessageToAPI);
     inputArea.appendChild(inputField);
     inputArea.appendChild(sendButton);
-    
+
     // Status
     statusDiv = document.createElement('div');
     statusDiv.className = 'chat-widget-status';
-    
+
     widgetContainer.appendChild(header);
     widgetContainer.appendChild(messagesDiv);
     widgetContainer.appendChild(inputArea);
     widgetContainer.appendChild(statusDiv);
-    
+
     document.body.appendChild(widgetContainer);
-    
+
     // Cargar historial y renderizar (sin mostrar todavía)
     loadHistory();
     renderMessages();
   }
-  
+
   // Alternar apertura/cierre del widget
   function toggleWidget() {
     isWidgetOpen = !isWidgetOpen;
@@ -490,7 +490,7 @@
       }
     }
   }
-  
+
   // Crear botón flotante
   function createFloatingButton() {
     const btn = document.createElement('button');
@@ -499,12 +499,12 @@
     btn.addEventListener('click', toggleWidget);
     document.body.appendChild(btn);
   }
-  
+
   // Inicializar todo cuando el DOM esté listo
   function init() {
     createFloatingButton();
     createWidget(); // crea el contenedor (sin definir display)
-    
+
     // Determinar si debe abrirse automáticamente
     const autoOpenFlag = localStorage.getItem(AUTO_OPEN_KEY);
     // Si no existe la bandera o si la bandera es 'true' (de versiones anteriores) la tratamos como primera vez.
@@ -521,10 +521,11 @@
       isWidgetOpen = false;
     }
   }
-  
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 })();
+

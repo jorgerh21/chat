@@ -6,7 +6,7 @@ const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 const statusIndicator = document.getElementById('statusIndicator');
 
 // API endpoint (ajustar si es necesario)
-const API_URL = 'https://chatbot.discoduro.app/chat';
+const API_URL = 'https://api.sitioz.com/web.php';
 
 // Clave para guardar el historial en localStorage
 const STORAGE_KEY = 'chat_conversation_history';
@@ -22,7 +22,7 @@ function loadHistory() {
             conversation = JSON.parse(saved);
             // Validar que sea un array y tenga la estructura mínima
             if (!Array.isArray(conversation)) conversation = [];
-        } catch(e) { conversation = []; }
+        } catch (e) { conversation = []; }
     }
     // Si no hay historial, podemos dejar vacío o agregar un mensaje de bienvenida de sistema.
     // El mensaje de bienvenida está en el HTML estático.
@@ -41,7 +41,7 @@ function renderMessages() {
     for (let child of children) {
         child.remove();
     }
-    
+
     // Also remove any static welcome message we might have duplicated
     const welcomeMsgDiv = chatMessagesDiv.querySelector('.welcome-message');
     if (welcomeMsgDiv) welcomeMsgDiv.remove();
@@ -57,21 +57,21 @@ function renderMessages() {
         conversation.forEach(msg => {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${msg.role}`;
-            
+
             const avatarSpan = document.createElement('div');
             avatarSpan.className = 'message-avatar';
             avatarSpan.innerText = msg.role === 'user' ? '👤' : '🤖';
-            
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
             contentDiv.innerText = msg.content;
-            
+
             messageDiv.appendChild(avatarSpan);
             messageDiv.appendChild(contentDiv);
             chatMessagesDiv.appendChild(messageDiv);
         });
     }
-    
+
     // Scroll al final
     chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 }
@@ -87,29 +87,29 @@ function addMessage(role, content) {
 async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
-    
+
     // Deshabilitar botón y mostrar estado
     sendBtn.disabled = true;
     statusIndicator.innerText = 'Enviando mensaje...';
     userInput.disabled = true;
-    
+
     // Agregar mensaje de usuario al historial local
     addMessage('user', text);
     userInput.value = '';
     userInput.style.height = 'auto';
-    
+
     // Preparamos el historial completo para enviar a la API
     // La API espera el array de mensajes con roles 'user' y 'assistant'
     // Aseguramos que la conversación actual tiene el formato correcto.
-    
+
     // Mostrar indicador de "escribiendo"
     const tempTypingId = showTypingIndicator();
-    
+
     try {
         const payload = {
             messages: conversation  // ya contiene user y assistant
         };
-        
+
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
@@ -117,23 +117,23 @@ async function sendMessage() {
             },
             body: JSON.stringify(payload)
         });
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
-        
+
         const data = await response.json();
         const assistantReply = data.respuesta;
-        
+
         // Eliminar indicador de escritura antes de agregar respuesta
         removeTypingIndicator(tempTypingId);
-        
+
         // Agregar respuesta del asistente al historial y renderizar
         addMessage('assistant', assistantReply);
-        
+
         statusIndicator.innerText = 'Listo';
-        
+
     } catch (error) {
         console.error('Error al llamar a la API:', error);
         statusIndicator.innerText = `Error: ${error.message}`;
@@ -181,7 +181,7 @@ function clearHistory() {
         saveHistory();
         renderMessages();
         statusIndicator.innerText = 'Historial limpiado';
-        setTimeout(() => { if(statusIndicator.innerText === 'Historial limpiado') statusIndicator.innerText = ''; }, 2000);
+        setTimeout(() => { if (statusIndicator.innerText === 'Historial limpiado') statusIndicator.innerText = ''; }, 2000);
     }
 }
 
