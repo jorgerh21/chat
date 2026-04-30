@@ -1,9 +1,11 @@
-// chat-widget.js - Botón flotante + ventana de chat con reinicio y enlace a chat.sitioz.com
+// chat-widget.js - Botón flotante + ventana de chat conectada a API Gemini (asistente de ventas)
+// con auto-apertura la primera vez, botones de reinicio y enlace a chat completo.
 
 (function() {
   // Configuración
   const API_URL = 'https://chatbot.discoduro.app/chat';
   const STORAGE_KEY = 'chat_widget_conversation';
+  const AUTO_OPEN_KEY = 'chat_widget_auto_opened';
   const WELCOME_MESSAGE = '🤖 ¡Hola! Soy tu asesor de ventas de cursos de programación. ¿En qué puedo ayudarte hoy?';
   const SITE_URL = 'https://chat.sitioz.com';
 
@@ -261,10 +263,11 @@
     saveHistory();
   }
 
-  // Reiniciar conversación
+  // Reiniciar conversación (borra historial y la marca de auto-apertura para que vuelva a abrirse al recargar)
   function resetConversation() {
     conversation = [];
     saveHistory();
+    localStorage.removeItem(AUTO_OPEN_KEY);
     renderMessages();
     if (statusDiv) statusDiv.innerText = 'Conversación reiniciada';
     setTimeout(() => {
@@ -370,13 +373,13 @@
     });
   }
 
-  // Crear la ventana del widget
+  // Crear la ventana del widget (sin mostrarla aún, solo estructura)
   function createWidget() {
     if (widgetContainer) return;
     
     widgetContainer = document.createElement('div');
     widgetContainer.className = 'chat-widget-container';
-    widgetContainer.style.display = 'none';
+    // No se fija display aquí; se controlará desde init()
     
     // Header con botones adicionales
     const header = document.createElement('div');
@@ -415,6 +418,11 @@
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       toggleWidget();
+      // Al cerrar manualmente, guardamos que el usuario prefiere que no se abra automáticamente (ya lo maneja init con la bandera)
+      // Pero si ya existe la bandera, no es necesario; si no existe, la creamos para que no se abra sola en futuras recargas.
+      if (!localStorage.getItem(AUTO_OPEN_KEY)) {
+        localStorage.setItem(AUTO_OPEN_KEY, 'closed_manually');
+      }
     });
     
     btnContainer.appendChild(resetBtn);
@@ -462,7 +470,7 @@
     
     document.body.appendChild(widgetContainer);
     
-    // Cargar historial y renderizar
+    // Cargar historial y renderizar (sin mostrar todavía)
     loadHistory();
     renderMessages();
   }
@@ -474,7 +482,12 @@
     widgetContainer.style.display = isWidgetOpen ? 'flex' : 'none';
     if (isWidgetOpen) {
       inputField.focus();
-      renderMessages(); // refrescar por si cambió
+      renderMessages();
+    } else {
+      // Al cerrar manualmente, aseguramos que no se abra automáticamente en futuras recargas
+      if (!localStorage.getItem(AUTO_OPEN_KEY)) {
+        localStorage.setItem(AUTO_OPEN_KEY, 'closed_manually');
+      }
     }
   }
   
@@ -490,8 +503,23 @@
   // Inicializar todo cuando el DOM esté listo
   function init() {
     createFloatingButton();
-    createWidget(); // pre-crea pero oculto
-    widgetContainer.style.display = 'none';
+    createWidget(); // crea el contenedor (sin definir display)
+    
+    // Determinar si debe abrirse automáticamente
+    const autoOpenFlag = localStorage.getItem(AUTO_OPEN_KEY);
+    // Si no existe la bandera o si la bandera es 'true' (de versiones anteriores) la tratamos como primera vez.
+    // Nosotros guardamos 'true' cuando abrimos automáticamente, o 'closed_manually' si se cerró.
+    if (!autoOpenFlag || autoOpenFlag === 'true') {
+      // Primera visita (o nunca se cerró manualmente) -> abrir automáticamente
+      widgetContainer.style.display = 'flex';
+      isWidgetOpen = true;
+      localStorage.setItem(AUTO_OPEN_KEY, 'true');
+      if (inputField) inputField.focus();
+    } else {
+      // Ya se cerró manualmente alguna vez -> mantener cerrado
+      widgetContainer.style.display = 'none';
+      isWidgetOpen = false;
+    }
   }
   
   if (document.readyState === 'loading') {
