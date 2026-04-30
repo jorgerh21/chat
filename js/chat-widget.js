@@ -1,10 +1,11 @@
-// chat-widget.js - Botón flotante + ventana de chat conectada a API Gemini (asistente de ventas)
+// chat-widget.js - Botón flotante + ventana de chat con reinicio y enlace a chat.sitioz.com
 
 (function() {
   // Configuración
   const API_URL = 'https://chatbot.discoduro.app/chat';
   const STORAGE_KEY = 'chat_widget_conversation';
   const WELCOME_MESSAGE = '🤖 ¡Hola! Soy tu asesor de ventas de cursos de programación. ¿En qué puedo ayudarte hoy?';
+  const SITE_URL = 'https://chat.sitioz.com';
 
   // Estilos del widget (se inyectan automáticamente)
   const styles = `
@@ -54,15 +55,37 @@
     .chat-widget-header {
       background: #2c3e66;
       color: white;
-      padding: 15px 20px;
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-weight: bold;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .chat-widget-header h3 {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      flex: 1;
+    }
+    .header-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .header-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .header-btn:hover {
+      background: rgba(255,255,255,0.4);
     }
     .chat-widget-close {
       background: none;
@@ -71,6 +94,7 @@
       font-size: 20px;
       cursor: pointer;
       opacity: 0.8;
+      padding: 0 4px;
     }
     .chat-widget-close:hover {
       opacity: 1;
@@ -193,6 +217,10 @@
         bottom: 80px;
         height: calc(100vh - 100px);
       }
+      .header-btn {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+      }
     }
   `;
 
@@ -231,6 +259,17 @@
   function addMessage(role, content) {
     conversation.push({ role, content });
     saveHistory();
+  }
+
+  // Reiniciar conversación
+  function resetConversation() {
+    conversation = [];
+    saveHistory();
+    renderMessages();
+    if (statusDiv) statusDiv.innerText = 'Conversación reiniciada';
+    setTimeout(() => {
+      if (statusDiv && statusDiv.innerText === 'Conversación reiniciada') statusDiv.innerText = '';
+    }, 2000);
   }
 
   // Renderizar todos los mensajes en el contenedor
@@ -339,11 +378,50 @@
     widgetContainer.className = 'chat-widget-container';
     widgetContainer.style.display = 'none';
     
-    // Header
+    // Header con botones adicionales
     const header = document.createElement('div');
     header.className = 'chat-widget-header';
-    header.innerHTML = '<h3>🎓 Asistente de Cursos</h3><button class="chat-widget-close">✕</button>';
-    header.querySelector('.chat-widget-close').addEventListener('click', toggleWidget);
+    
+    const title = document.createElement('h3');
+    title.textContent = '🎓 Asistente de Cursos';
+    
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'header-buttons';
+    
+    // Botón reiniciar
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'header-btn';
+    resetBtn.innerHTML = '⟳ Reiniciar';
+    resetBtn.title = 'Borrar historial y empezar de nuevo';
+    resetBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetConversation();
+    });
+    
+    // Botón enlace a chat.sitioz.com
+    const linkBtn = document.createElement('button');
+    linkBtn.className = 'header-btn';
+    linkBtn.innerHTML = '🌐 Chat completo';
+    linkBtn.title = 'Abrir chat completo en nueva pestaña';
+    linkBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.open(SITE_URL, '_blank');
+    });
+    
+    // Botón cerrar (X)
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'chat-widget-close';
+    closeBtn.innerHTML = '✕';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleWidget();
+    });
+    
+    btnContainer.appendChild(resetBtn);
+    btnContainer.appendChild(linkBtn);
+    header.appendChild(title);
+    header.appendChild(btnContainer);
+    header.appendChild(closeBtn);
     
     // Messages area
     messagesDiv = document.createElement('div');
