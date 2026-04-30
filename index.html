@@ -2,69 +2,29 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente de Programación · Clases Personalizadas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Asistente de Ventas - Cursos de Programación</title>
     <link rel="stylesheet" href="css/chat.css">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1995/1995573.png">
 </head>
 <body>
     <div class="chat-container">
-        <!-- Barra lateral -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>💬 Clases IA</h2>
+        <div class="chat-header">
+            <h1>🎓 Asesor de Cursos</h1>
+            <p>Tu asistente para elegir el mejor curso de programación</p>
+            <button id="clearHistoryBtn" class="clear-btn">🗑️ Limpiar historial</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <!-- Los mensajes se renderizan dinámicamente -->
+            <div class="welcome-message">
+                🤖 ¡Hola! Soy tu asesor de ventas. Pregúntame sobre cursos de Python, JavaScript, desarrollo web, ciencia de datos y más. Estoy aquí para ayudarte a encontrar el curso ideal.
             </div>
-            <button class="nuevo-chat">+ Nuevo chat</button>
-            <div class="historial">
-                <!-- Aquí podrías listar conversaciones guardadas -->
-            </div>
-            <div class="sidebar-footer">
-                <p>Instructor: Jorge Rodriguez</p>
-            </div>
-        </aside>
-
-        <!-- Área principal del chat -->
-        <main class="chat-main">
-            <header class="chat-header">
-                <h1>Asistente de Programación</h1>
-                <p>Potenciado por Ollama · Modelo Llama 3</p>
-            </header>
-
-            <!-- Mensajes -->
-            <div class="chat-messages" id="chatMessages">
-                <div class="mensaje asistente">
-                    <div class="avatar">🤖</div>
-                    <div class="contenido">
-                        <p>¡Hola! Soy tu asistente de programación. Puedo ayudarte con:</p>
-                        <ul>
-                            <li>Explicarte conceptos de código</li>
-                            <li>Resolver dudas de tus cursos</li>
-                            <li>Generar ejemplos prácticos</li>
-                            <li>Depurar fragmentos de código</li>
-                        </ul>
-                        <p>¿En qué te puedo ayudar hoy?</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Área de entrada -->
-            <div class="chat-input">
-                <textarea 
-                    id="userInput" 
-                    placeholder="Escribe tu mensaje aquí..." 
-                    rows="1"
-                    autofocus
-                ></textarea>
-                <button id="sendBtn" class="btn-enviar" title="Enviar mensaje">
-                    <span class="icono">▶</span>
-                </button>
-            </div>
-
-            <!-- Estado de la conexión -->
-            <div class="api-config">
-                <span id="statusIndicator" class="status-dot"></span>
-                <small id="statusText">Conectando...</small>
-            </div>
-        </main>
+        </div>
+        <div class="chat-input-area">
+            <textarea id="userInput" placeholder="Escribe tu mensaje..." rows="1" maxlength="2000"></textarea>
+            <button id="sendBtn" class="send-btn">Enviar ➤</button>
+        </div>
+        <div class="status-indicator" id="statusIndicator"></div>
     </div>
 
     <script src="js/chat.js"></script>
