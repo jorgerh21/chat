@@ -1,5 +1,6 @@
 // chat-widget.js - Botón flotante + ventana de chat conectada a API Gemini (asistente de ventas)
 // con auto-apertura la primera vez, botones de reinicio y enlace a chat completo.
+// MODIFICADO: los mensajes del asistente muestran URLs como enlaces cliqueables.
 
 (function () {
   // Configuración
@@ -8,6 +9,24 @@
   const AUTO_OPEN_KEY = 'chat_widget_auto_opened';
   const WELCOME_MESSAGE = '🤖 ¡Hola! Soy tu asesor de ventas de cursos de programación. ¿En qué puedo ayudarte hoy?';
   const SITE_URL = 'https://chat.sitioz.com';
+
+  // ========== NUEVA FUNCIÓN: convertir URLs en enlaces ==========
+  function linkify(text) {
+    // 1. Eliminar cualquier etiqueta HTML existente (seguridad)
+    let plain = text.replace(/<[^>]*>/g, '');
+    // 2. Regex para encontrar URLs (http, https, wa.me, etc.)
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    // 3. Reemplazar cada URL por un enlace <a>
+    return plain.replace(urlRegex, (url) => {
+      // Escapar caracteres especiales en la URL
+      const escapedUrl = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Color especial para enlaces de WhatsApp
+      const isWhatsApp = /wa\.me|api\.whatsapp\.com/.test(url);
+      const color = isWhatsApp ? '#25D366' : '#0066cc';
+      return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" style="color: ${color}; text-decoration: underline;">${escapedUrl}</a>`;
+    });
+  }
+  // =============================================================
 
   // Estilos del widget (se inyectan automáticamente)
   const styles = `
@@ -263,7 +282,7 @@
     saveHistory();
   }
 
-  // Reiniciar conversación (borra historial y la marca de auto-apertura para que vuelva a abrirse al recargar)
+  // Reiniciar conversación
   function resetConversation() {
     conversation = [];
     saveHistory();
@@ -275,20 +294,27 @@
     }, 2000);
   }
 
-  // Renderizar todos los mensajes en el contenedor
+  // Renderizar todos los mensajes en el contenedor (con linkify para el asistente)
   function renderMessages() {
     if (!messagesDiv) return;
     messagesDiv.innerHTML = '';
     if (conversation.length === 0) {
       const welcomeDiv = document.createElement('div');
       welcomeDiv.className = 'chat-widget-message assistant';
-      welcomeDiv.innerHTML = `<div class="chat-widget-bubble">${WELCOME_MESSAGE}</div>`;
+      // Aplicar linkify al mensaje de bienvenida también
+      welcomeDiv.innerHTML = `<div class="chat-widget-bubble">${linkify(WELCOME_MESSAGE)}</div>`;
       messagesDiv.appendChild(welcomeDiv);
     } else {
       conversation.forEach(msg => {
         const msgDiv = document.createElement('div');
         msgDiv.className = `chat-widget-message ${msg.role}`;
-        msgDiv.innerHTML = `<div class="chat-widget-bubble">${escapeHtml(msg.content)}</div>`;
+        if (msg.role === 'assistant') {
+          // Para el asistente: aplicar linkify (convierte URLs en enlaces)
+          msgDiv.innerHTML = `<div class="chat-widget-bubble">${linkify(msg.content)}</div>`;
+        } else {
+          // Para el usuario: mostrar texto plano escapado (sin HTML)
+          msgDiv.innerHTML = `<div class="chat-widget-bubble">${escapeHtml(msg.content)}</div>`;
+        }
         messagesDiv.appendChild(msgDiv);
       });
     }
@@ -317,18 +343,15 @@
     const text = inputField.value.trim();
     if (!text) return;
 
-    // Deshabilitar UI
     sendButton.disabled = true;
     inputField.disabled = true;
     if (statusDiv) statusDiv.innerText = 'Enviando...';
 
-    // Agregar mensaje de usuario
     addMessage('user', text);
     renderMessages();
     inputField.value = '';
     inputField.style.height = 'auto';
 
-    // Mostrar typing
     showTyping();
 
     try {
@@ -361,27 +384,24 @@
     }
   }
 
-  // Helper: escapar HTML
+  // Helper: escapar HTML (para mensajes de usuario y seguridad)
   function escapeHtml(str) {
     return str.replace(/[&<>]/g, function (m) {
       if (m === '&') return '&amp;';
       if (m === '<') return '&lt;';
       if (m === '>') return '&gt;';
       return m;
-    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function (c) {
-      return c;
     });
   }
 
-  // Crear la ventana del widget (sin mostrarla aún, solo estructura)
+  // Crear la ventana del widget
   function createWidget() {
     if (widgetContainer) return;
 
     widgetContainer = document.createElement('div');
     widgetContainer.className = 'chat-widget-container';
-    // No se fija display aquí; se controlará desde init()
 
-    // Header con botones adicionales
+    // Header
     const header = document.createElement('div');
     header.className = 'chat-widget-header';
 
@@ -391,7 +411,6 @@
     const btnContainer = document.createElement('div');
     btnContainer.className = 'header-buttons';
 
-    // Botón reiniciar
     const resetBtn = document.createElement('button');
     resetBtn.className = 'header-btn';
     resetBtn.innerHTML = '⟳ Reiniciar';
@@ -401,7 +420,6 @@
       resetConversation();
     });
 
-    // Botón enlace a chat.sitioz.com
     const linkBtn = document.createElement('button');
     linkBtn.className = 'header-btn';
     linkBtn.innerHTML = '🌐 Chat completo';
@@ -411,15 +429,12 @@
       window.open(SITE_URL, '_blank');
     });
 
-    // Botón cerrar (X)
     const closeBtn = document.createElement('button');
     closeBtn.className = 'chat-widget-close';
     closeBtn.innerHTML = '✕';
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       toggleWidget();
-      // Al cerrar manualmente, guardamos que el usuario prefiere que no se abra automáticamente (ya lo maneja init con la bandera)
-      // Pero si ya existe la bandera, no es necesario; si no existe, la creamos para que no se abra sola en futuras recargas.
       if (!localStorage.getItem(AUTO_OPEN_KEY)) {
         localStorage.setItem(AUTO_OPEN_KEY, 'closed_manually');
       }
@@ -470,7 +485,6 @@
 
     document.body.appendChild(widgetContainer);
 
-    // Cargar historial y renderizar (sin mostrar todavía)
     loadHistory();
     renderMessages();
   }
@@ -484,14 +498,13 @@
       inputField.focus();
       renderMessages();
     } else {
-      // Al cerrar manualmente, aseguramos que no se abra automáticamente en futuras recargas
       if (!localStorage.getItem(AUTO_OPEN_KEY)) {
         localStorage.setItem(AUTO_OPEN_KEY, 'closed_manually');
       }
     }
   }
 
-  // Crear botón flotante
+  // Botón flotante
   function createFloatingButton() {
     const btn = document.createElement('button');
     btn.className = 'chat-widget-btn';
@@ -500,23 +513,18 @@
     document.body.appendChild(btn);
   }
 
-  // Inicializar todo cuando el DOM esté listo
+  // Inicialización
   function init() {
     createFloatingButton();
-    createWidget(); // crea el contenedor (sin definir display)
+    createWidget();
 
-    // Determinar si debe abrirse automáticamente
     const autoOpenFlag = localStorage.getItem(AUTO_OPEN_KEY);
-    // Si no existe la bandera o si la bandera es 'true' (de versiones anteriores) la tratamos como primera vez.
-    // Nosotros guardamos 'true' cuando abrimos automáticamente, o 'closed_manually' si se cerró.
     if (!autoOpenFlag || autoOpenFlag === 'true') {
-      // Primera visita (o nunca se cerró manualmente) -> abrir automáticamente
       widgetContainer.style.display = 'flex';
       isWidgetOpen = true;
       localStorage.setItem(AUTO_OPEN_KEY, 'true');
       if (inputField) inputField.focus();
     } else {
-      // Ya se cerró manualmente alguna vez -> mantener cerrado
       widgetContainer.style.display = 'none';
       isWidgetOpen = false;
     }
@@ -528,4 +536,3 @@
     init();
   }
 })();
-
