@@ -6,7 +6,7 @@ const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 const statusIndicator = document.getElementById('statusIndicator');
 
 // API endpoint (ajustar si es necesario)
-const API_URL = 'https://api.sitioz.com/web.php';
+const API_URL = 'https://chatbot.discoduro.app/chat';
 
 // Clave para guardar el historial en localStorage
 const STORAGE_KEY = 'chat_conversation_history';

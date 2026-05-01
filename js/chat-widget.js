@@ -4,7 +4,7 @@
 
 (function () {
   // Configuración
-  const API_URL = 'https://api.sitioz.com/web.php';
+  const API_URL = 'https://chats.sitioz.com/web.php';
   const STORAGE_KEY = 'chat_widget_conversation';
   const AUTO_OPEN_KEY = 'chat_widget_auto_opened';
   const WELCOME_MESSAGE = '🤖 ¡Hola! Soy tu asesor de ventas de cursos de programación. ¿En qué puedo ayudarte hoy?';
